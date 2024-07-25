@@ -1,14 +1,21 @@
 # quick-share
 
 Simple secrets sharing app with E2EE. The server only ever sees an encrypted
-blob of data. The server does not have the key to decrypt the data.
+blob of data. The server does not have the key to decrypt the data. The key is
+only shared with the recipient of the secret.
 
 ## Usage
 
 Deploy the server:
 
 ```bash
-$ docker run -d -p 8080:8080 --name quick-share-server ghcr.io/quick-share/quick-share-server
+$ docker run -d -p 8888:80 --name quick-share ghcr.io/simonschneider/quick-share
+```
+
+or use the docker-compose file:
+
+```bash
+$ docker-compose up -d
 ```
 
 Navigate to the page in your browser and start sharing secrets.

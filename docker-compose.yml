@@ -1,0 +1,5 @@
+services:
+  quick-share:
+    image: ghcr.io/simonschneider/quick-share:latest
+    ports:
+      - "8888:80"
