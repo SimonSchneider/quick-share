@@ -1,6 +1,6 @@
 # quick-share
 
-Simple secrets sharing app. End-to-end encrypted. The server only ever sees an encrypted
+Simple secrets sharing app with E2EE. The server only ever sees an encrypted
 blob of data. The server does not have the key to decrypt the data.
 
 ## Usage
@@ -51,8 +51,3 @@ sequenceDiagram
     bb -> b: show secret
 
 ```
-
-## More Features
-
-- [ ] Allow uploading files
-- [ ] Allow setting a password for the secret in addition to the encryption key. This would allow the secret to be shared even more securely by sharing the password over a different channel (ie. voice) and only allowing the link to be a one time use.
