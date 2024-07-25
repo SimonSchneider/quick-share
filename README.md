@@ -51,3 +51,8 @@ sequenceDiagram
     bb -> b: show secret
 
 ```
+
+## More Features
+
+- [ ] Allow uploading files
+- [ ] Allow setting a password for the secret in addition to the encryption key. This would allow the secret to be shared even more securely by sharing the password over a different channel (ie. voice) and only allowing the link to be a one time use.
