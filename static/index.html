@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Sharing</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        let createdSecret = false;
+
+        function showLink(link) {
+            document.getElementById("createContainer").style.display = 'none';
+            document.getElementById("resultContainer").style.display = '';
+            document.getElementById("link").href = link;
+
+            const qrCodeContainer = document.getElementById('qrcode');
+            qrCodeContainer.innerHTML = '';
+            new QRCode(qrCodeContainer, link);
+            createdSecret = true;
+        }
+
+        function reset() {
+            document.getElementById("createContainer").style.display = '';
+            document.getElementById("resultContainer").style.display = 'none';
+            document.getElementById("link").href = '';
+            document.getElementById("secretInput").focus();
+            createdSecret = false;
+        }
+
+        function submit(e) {
+            e.preventDefault();
+            if (createdSecret) {
+                reset();
+            } else {
+                createSecret();
+            }
+        }
+
+        function copyLink() {
+            const link = document.getElementById("link").href;
+            navigator.clipboard.writeText(link);
+        }
+
+        async function createSecret(e) {
+            const secretElem = document.getElementById('secretInput');
+            const value = secretElem.value.trim();
+            const uses = document.getElementById('uses').value;
+            const expiration = document.getElementById('expiration').value;
+            if (value === '') {
+                console.log('No secret provided')
+                return;
+            }
+            const key = crypto.getRandomValues(new Uint8Array(32));
+
+            const response = await fetch('/create', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    encrypted_secret: await encrypt(value, key),
+                    uses: Number.parseInt(uses, 10),
+                    expiration: expiration
+                })
+            });
+            if (!response.ok) {
+                alert('Failed to create secret: ' + await response.text());
+                return;
+            }
+            const id = await response.text();
+            const encKey = btoa(String.fromCharCode(...key));
+            secretElem.value = '';
+            showLink(`${window.location.origin}/secret/${id}#${encKey}`);
+        }
+
+        async function encrypt(text, key) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const algorithm = {name: 'AES-GCM', iv: iv};
+            const cryptoKey = await crypto.subtle.importKey('raw', key, algorithm, false, ['encrypt']);
+            const encrypted = await crypto.subtle.encrypt(algorithm, cryptoKey, data);
+            return btoa(String.fromCharCode(...iv) + String.fromCharCode(...new Uint8Array(encrypted)));
+        }
+
+        window.onload = () => {
+            reset();
+            document.body.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    submit(e);
+                }
+            });
+            document.getElementById("createSecret").addEventListener("click", (e) => {
+                submit(e);
+            })
+        }
+    </script>
+</head>
+<body>
+<div class="container" id="createContainer">
+    <textarea id="secretInput" aria-label="Secret to encrypt" placeholder="Enter your secret"></textarea>
+    <div class="inputOptionContainer">
+        <div class="inputContainer"><p class="label">Uses</p><input id="uses" type="number" aria-label="uses"
+                                                                    value="1"/></div>
+        <div class="inputContainer"><p class="label">Expiration (duration)</p><input id="expiration" type="text"
+                                                                                     aria-label="expiration"
+                                                                                     value="5m"/></div>
+    </div>
+    <button id="createSecret">Create Secret</button>
+    <hr class="solid">
+    <p>Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to create the secret</p>
+</div>
+<div class="container" id="resultContainer" style="display: none">
+    <p>Share this link with the recipient: <a id="link" target="_blank">Link</a></p>
+    <button class="secondary" onclick="copyLink()">Copy Link</button>
+    <div id="qrcode"></div>
+    <hr class="solid">
+    <button onclick="reset()">Create another secret</button>
+</div>
+</body>
+</html>
