@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"net/http"
 	"time"
 )
@@ -13,11 +14,14 @@ type Secrets interface {
 	Get(id string) (string, bool)
 }
 
-type SecretTemplateProvider func() (*template.Template, error)
+type Templates interface {
+	Lookup(name string) *template.Template
+}
 
 type Handler struct {
 	Secrets        Secrets
-	SecretTemplate SecretTemplateProvider
+	Templates      Templates
+	Files          fs.FS
 	MaxSecretBytes int64
 }
 
@@ -56,32 +60,40 @@ func (h *Handler) CreateSecret(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(id))
 }
 
+func (h *Handler) execHtmlTemplate(w http.ResponseWriter, name string, data any) {
+	tmpl := h.Templates.Lookup(name)
+	if tmpl == nil {
+		http.Error(w, "template not found", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	if err := tmpl.Execute(w, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func (h *Handler) GetSecret(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	respType := r.Header.Get("Content-Type")
 
 	encryptedSecret, ok := h.Secrets.Get(id)
 	if !ok {
-		http.Error(w, "Secret not found", http.StatusNotFound)
+		if respType == "text/html" || respType == "" {
+			http.ServeFileFS(w, r, h.Files, "secretNotFound.html")
+		} else {
+			http.Error(w, "Secret not found", http.StatusNotFound)
+		}
 		return
 	}
-	respType := r.Header.Get("Content-Type")
 	if respType == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"encrypted_secret": encryptedSecret})
 	} else if respType == "text/html" || respType == "" {
-		data := struct {
+		h.execHtmlTemplate(w, "secrets.gohtml", struct {
 			EncryptedSecret string
 		}{
 			EncryptedSecret: encryptedSecret,
-		}
-		tmpl, err := h.SecretTemplate()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if err := tmpl.Execute(w, data); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		})
 	} else if respType == "text/plain" {
 		w.Write([]byte(encryptedSecret))
 	} else {

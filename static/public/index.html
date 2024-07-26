@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>quick-share</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="favicon.svg">
+    <script src="index.js"></script>
+    <script src="/submitListener.js"></script>
+</head>
+<body>
+<div class="container">
+    <textarea id="secretInput" class="textbox" aria-label="Secret to encrypt"
+              placeholder="Enter your secret"></textarea>
+    <div class="inputOptionContainer">
+        <div class="inputContainer"><p class="label">Uses</p><input id="uses" type="number" aria-label="uses"
+                                                                    value="1"/></div>
+        <div class="inputContainer"><p class="label">Expiration (duration)</p><input id="expiration" type="text"
+                                                                                     aria-label="expiration"
+                                                                                     value="5m"/></div>
+    </div>
+    <button id="createSecret" onclick="submit()">Create Secret</button>
+    <hr class="solid">
+    <p>Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to create the secret</p>
+</div>
+</body>
+</html>

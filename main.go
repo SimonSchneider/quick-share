@@ -1,24 +1,61 @@
 package main
 
 import (
+	"embed"
+	_ "embed"
 	"flag"
 	"html/template"
+	"io/fs"
 	"log"
 	"net/http"
-	"path/filepath"
+	"os"
 )
 
-func NewTemplateProvider(watch bool) SecretTemplateProvider {
-	pth := filepath.Join("templates", "secret.html")
+func Must[T any](t T, err error) T {
+	if err != nil {
+		log.Fatal(err)
+	}
+	return t
+}
+
+//go:embed static/*
+var embeddedFS embed.FS
+
+func getFS(watch bool) fs.FS {
 	if watch {
-		return func() (*template.Template, error) {
-			return template.ParseFiles(pth)
+		if _, err := os.Stat("static"); err == nil {
+			return os.DirFS("static")
 		}
 	}
-	tmpl := template.Must(template.ParseFiles(pth))
-	return func() (*template.Template, error) {
-		return tmpl, nil
+	return Must(fs.Sub(embeddedFS, "static"))
+}
+
+type templates struct {
+	files fs.FS
+}
+
+func (w *templates) Parse() (*template.Template, error) {
+	return template.ParseFS(w.files, "*.gohtml")
+}
+
+func (w *templates) Lookup(pth string) *template.Template {
+	tmpls, err := w.Parse()
+	if err != nil {
+		log.Fatal(err)
 	}
+	tmpl := tmpls.Lookup(pth)
+	if tmpl == nil {
+		log.Fatalf("template %s not found", pth)
+	}
+	return tmpl
+}
+
+func getTemplates(files fs.FS, watch bool) Templates {
+	tmpls := &templates{files: Must(fs.Sub(files, "templates"))}
+	if watch {
+		return tmpls
+	}
+	return Must(tmpls.Parse())
 }
 
 var fWatch = flag.Bool("watch", false, "Watch for changes in the static directory (useful for debugging)")
@@ -28,15 +65,18 @@ var fMaxSecretSize = flag.Int64("max-secret-size", 256*1024, "Maximum size of a 
 
 func main() {
 	flag.Parse()
+	files := getFS(*fWatch)
+	tmpls := getTemplates(files, *fWatch)
 	handler := Handler{
 		Secrets:        NewInMemorySecrets(*fMaxSecrets),
-		SecretTemplate: NewTemplateProvider(*fWatch),
+		Templates:      tmpls,
 		MaxSecretBytes: *fMaxSecretSize,
+		Files:          files,
 	}
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /create", handler.CreateSecret)
-	mux.HandleFunc("GET /secret/{id}", handler.GetSecret)
-	mux.Handle("GET /", http.FileServer(http.Dir("./static")))
+	mux.HandleFunc("POST /secrets", handler.CreateSecret)
+	mux.HandleFunc("GET /secrets/{id}", handler.GetSecret)
+	mux.Handle("GET /", http.StripPrefix("/", http.FileServerFS(Must(fs.Sub(files, "public")))))
 
 	log.Printf("Listening at: %s", *fAddr)
 	if err := http.ListenAndServe(*fAddr, mux); err != nil {

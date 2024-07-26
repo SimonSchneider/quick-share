@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>quick-share</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="icon" href="/favicon.svg">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="index.js"></script>
+    <script src="/submitListener.js"></script>
+</head>
+<body>
+<div class="container">
+    <p>Share this link with the recipient: <a id="link" target="_blank">Link</a></p>
+    <button class="secondary" onclick="copyLink()">Copy Link</button>
+    <div id="qrcode"></div>
+    <hr class="solid">
+    <button onclick="reset()">Create another secret</button>
+    <p>Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to create another secret</p>
+</div>
+</body>
+</html>
