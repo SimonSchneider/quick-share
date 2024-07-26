@@ -18,6 +18,12 @@ or use the docker-compose file:
 $ docker-compose up -d
 ```
 
+or you can build the binary yourself and just use that (the binary embeds all static files to be selfcontained and does not need any other files):
+
+```bash
+$ go build -o quick-share *.go
+```
+
 Navigate to the page in your browser and start sharing secrets.
 
 ## Details
